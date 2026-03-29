@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>PureTodo</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        darkBg: '#0a0a0a',
+                        darkSurface: '#171717',
+                        darkBorder: '#262626',
+                        accentYellow: '#fbbf24',
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px rgba(0, 0, 0, 0.08)',
+                        'glow-light': '0 0 20px rgba(0, 0, 0, 0.05)',
+                        'glow-dark': '0 0 20px rgba(255, 255, 255, 0.05)',
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'scale-in': 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'star-pop': 'starPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        scaleIn: { '0%': { opacity: '0', transform: 'scale(0.94)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        starPop: { '0%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.4)' }, '100%': { transform: 'scale(1)' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } }
+                    },
+                    transitionTimingFunction: {
+                        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+                        'bounce-smooth': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* === GLOBAL SMOOTHNESS === */
+        html {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+
+        /* Safe area for notched phones */
+        @supports (padding: max(0px)) {
+            body { padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right)); }
+        }
+
+        [v-cloak] { display: none; }
+
+        /* === SMOOTH SCROLLBAR === */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; transition: background 0.3s ease; }
+        .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+        /* === VUE TRANSITIONS (SUPER SMOOTH) === */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+        .list-enter-active, .list-leave-active { transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .list-enter-from { opacity: 0; transform: scale(0.95) translateY(20px); }
+        .list-leave-to { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        .list-leave-active { position: absolute; width: 100%; }
+        .list-move { transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        .slide-fade-enter-active { transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide-fade-leave-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide-fade-enter-from { transform: translateX(40px); opacity: 0; }
+        .slide-fade-leave-to { transform: translateX(-40px); opacity: 0; }
+
+        /* === INTERACTIVE ELEMENTS === */
+        @media (hover: hover) {
+            .hover-lift { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease; }
+            .hover-lift:hover { transform: translateY(-3px) scale(1.02); }
+        }
+
+        .touch-feedback { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .touch-feedback:active { transform: scale(0.94); }
+
+        /* === CUSTOM CHECKBOX (ANIMATED) === */
+        .checkbox-circle {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #d4d4d8;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            background: transparent;
+            flex-shrink: 0;
+        }
+        .dark .checkbox-circle { border-color: #52525b; }
+        
+        @media (hover: hover) {
+            .checkbox-circle:hover { border-color: #000; transform: scale(1.08); }
+            .dark .checkbox-circle:hover { border-color: #fff; }
+        }
+
+        .checkbox-circle:checked {
+            background-color: #000;
+            border-color: #000;
+            transform: scale(1);
+        }
+        .dark .checkbox-circle:checked {
+            background-color: #fff;
+            border-color: #fff;
+        }
+
+        .checkbox-circle:checked::after {
+            content: '';
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) translate(-1px, -1px) scale(0);
+            position: absolute;
+            top: 3px; left: 8px;
+            animation: checkmark 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.1s;
+        }
+        .dark .checkbox-circle:checked::after { border-color: black; }
+
+        @keyframes checkmark {
+            0% { transform: rotate(45deg) translate(-1px, -1px) scale(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: rotate(45deg) translate(-1px, -1px) scale(1); opacity: 1; }
+        }
+
+        .strike { text-decoration: line-through; opacity: 0.4; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+        }
+        .dark .glass-panel {
+            background: rgba(23, 23, 23, 0.75);
+        }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        input, textarea, button, select {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* === MOBILE OPTIMIZATIONS === */
+        @media (max-width: 640px) {
+            .glass-panel { border-radius: 1.25rem; }
+            .checkbox-circle { width: 22px; height: 22px; }
+            .checkbox-circle:checked::after { width: 5px; height: 10px; top: 3px; left: 7px; }
+            
+            /* Убираем задержку в 300мс на мобильных */
+            button, a, input, select, textarea { touch-action: manipulation; }
+        }
+
+        /* Prevent pull-to-refresh on iOS for better app feel */
+        body { position: fixed; width: 100%; height: 100vh; overflow: hidden; }
+        #app { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body class="bg-white dark:bg-darkBg text-zinc-900 dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+
+<!-- Animated Background -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-zinc-100/60 dark:bg-zinc-800/20 blur-[120px] animate-float"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-zinc-100/60 dark:bg-zinc-800/20 blur-[100px] animate-float" style="animation-delay: 2s;"></div>
+</div>
+
+<div id="app" v-cloak class="flex-grow flex flex-col w-full h-full relative z-10">
+
+    <!-- Global Controls -->
+    <div class="fixed top-4 left-4 md:top-6 md:left-auto md:right-6 flex items-center gap-2 md:gap-3 z-50 animate-fade-in">
+        <button @click="toggleLang" class="w-10 h-10 md:w-11 md:h-11 rounded-full glass-panel border border-zinc-200/80 dark:border-darkBorder/80 flex items-center justify-center text-xs md:text-sm font-semibold hover:bg-white dark:hover:bg-zinc-800 touch-feedback shadow-soft">
+            {{ lang === 'ru' ? 'EN' : 'RU' }}
+        </button>
+        <button @click="toggleTheme" class="w-10 h-10 md:w-11 md:h-11 rounded-full glass-panel border border-zinc-200/80 dark:border-darkBorder/80 flex items-center justify-center text-lg hover:bg-white dark:hover:bg-zinc-800 touch-feedback shadow-soft group">
+            <i class="transition-transform duration-700 group-hover:rotate-[360deg]" :class="isDark ? 'ph-fill ph-moon text-white' : 'ph-fill ph-sun text-black'"></i>
+        </button>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <transition name="fade" mode="out-in">
+        <div v-if="!currentUser" class="flex-grow flex items-center justify-center p-4 md:p-6" key="auth">
+            <div class="glass-panel p-8 md:p-12 rounded-[2rem] border border-zinc-200/80 dark:border-darkBorder/80 w-full max-w-md shadow-glass animate-slide-up">
+                <div class="text-center mb-8 md:mb-10">
+                    <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2.5xl bg-black dark:bg-white text-white dark:text-black mb-6 shadow-soft hover:scale-105 transition-transform duration-500">
+                        <i class="ph-fill ph-leaf text-3xl md:text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
+                        PureTodo
+                    </h1>
+                    <p class="text-zinc-500 dark:text-zinc-400 text-sm">{{ isLoginMode ? t('loginSubtitle') : t('registerSubtitle') }}</p>
+                </div>
+
+                <form @submit.prevent="handleAuth" class="space-y-4">
+                    <div class="relative group">
+                        <i class="ph ph-user absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors duration-300"></i>
+                        <input v-model="authForm.username" type="text" :placeholder="t('username')" required
+                               class="w-full bg-zinc-50/80 dark:bg-darkBg/80 border border-zinc-200 dark:border-darkBorder rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10 transition-all placeholder-zinc-400 text-sm">
+                    </div>
+                    <div class="relative group">
+                        <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors duration-300"></i>
+                        <input v-model="authForm.password" type="password" :placeholder="t('password')" required
+                               class="w-full bg-zinc-50/80 dark:bg-darkBg/80 border border-zinc-200 dark:border-darkBorder rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10 transition-all placeholder-zinc-400 text-sm">
+                    </div>
+
+                    <transition name="fade">
+                        <div v-if="authError" class="text-black dark:text-white text-sm text-center bg-red-50 dark:bg-red-950/30 py-3 rounded-2xl border border-red-100 dark:border-red-900/50">
+                            {{ authError }}
+                        </div>
+                    </transition>
+
+                    <button type="submit" class="w-full bg-black dark:bg-white text-white dark:text-black rounded-2xl py-4 font-semibold text-sm transition-all duration-300 hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:shadow-lg active:scale-[0.97] mt-2 touch-feedback">
+                        {{ isLoginMode ? t('loginBtn') : t('registerBtn') }}
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center">
+                    <button @click="toggleAuthMode" class="text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white text-sm transition-colors duration-300 touch-feedback">
+                        {{ isLoginMode ? t('noAccount') : t('hasAccount') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN APP -->
+        <div v-else class="flex-grow flex flex-col max-w-5xl w-full mx-auto p-4 md:p-6 lg:p-8 animate-fade-in" key="app">
+            
+            <!-- Header -->
+            <header class="flex flex-col sm:flex-row justify-between items-center mb-6 md:mb-8 py-3 border-b border-zinc-200/80 dark:border-darkBorder/80 pt-14 sm:pt-3 gap-4 sm:gap-0 animate-slide-up">
+                <div class="flex items-center gap-3 md:gap-4 w-full sm:w-auto justify-between sm:justify-start pl-16 sm:pl-0 md:pr-24">
+                    <div class="flex items-center gap-3 group cursor-pointer touch-feedback" title="Your Profile">
+                        <div class="w-11 h-11 md:w-12 md:h-12 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-lg font-semibold shadow-soft group-hover:scale-105 transition-transform duration-300">
+                            {{ currentUser.username.charAt(0).toUpperCase() }}
+                        </div>
+                        <div>
+                            <h2 class="font-semibold text-base md:text-lg leading-tight text-black dark:text-white">
+                                {{ currentUser.username }}
+                            </h2>
+                            <p class="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Workspace</p>
+                        </div>
+                    </div>
+                    
+                    <button @click="logout" class="sm:hidden p-2 text-zinc-400 hover:text-black dark:hover:text-white rounded-xl touch-feedback">
+                        <i class="ph ph-sign-out text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <nav class="flex w-full sm:w-auto bg-zinc-100/80 dark:bg-darkSurface/80 backdrop-blur-md rounded-xl p-1 border border-zinc-200/80 dark:border-darkBorder/80 shadow-inner">
+                        <button @click="currentTab = 'tasks'" 
+                                :class="['flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 touch-feedback', currentTab === 'tasks' ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
+                            {{ t('tasksTab') }}
+                        </button>
+                        <button @click="currentTab = 'progress'" 
+                                :class="['flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 touch-feedback flex items-center justify-center gap-2', currentTab === 'progress' ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
+                            {{ t('progressTab') }} 
+                            <span v-if="todayNotRated" class="w-2 h-2 rounded-full bg-accentYellow animate-pulse"></span>
+                        </button>
+                    </nav>
+                    <button @click="logout" class="hidden sm:block p-2.5 text-zinc-400 hover:text-black dark:hover:text-white rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all duration-300 touch-feedback">
+                        <i class="ph ph-sign-out text-xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TASKS TAB -->
+            <transition name="slide-fade" mode="out-in">
+                <div v-if="currentTab === 'tasks'" key="tasks" class="flex-col flex flex-grow animate-scale-in">
+                    
+                    <!-- Add Task Form -->
+                    <div class="mb-6 md:mb-8 bg-white/80 dark:bg-darkSurface/80 backdrop-blur-xl rounded-[1.75rem] border border-zinc-200/80 dark:border-darkBorder/80 p-2 shadow-soft focus-within:border-black dark:focus-within:border-white focus-within:shadow-glow-light dark:focus-within:shadow-glow-dark transition-all duration-500">
+                        <form @submit.prevent="addTask" class="flex flex-col">
+                            <input v-model="newTask.title" type="text" :placeholder="t('taskPlaceholder')" required
+                                   class="w-full bg-transparent text-lg md:text-xl font-light outline-none px-4 md:px-6 pt-4 md:pt-5 pb-3 md:pb-4 placeholder-zinc-400 dark:placeholder-zinc-500 text-black dark:text-white">
+                            
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-4 md:px-6 pb-4 border-t border-zinc-100 dark:border-zinc-800/50 pt-4 mt-1">
+                                
+                                <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                                    <!-- Duration -->
+                                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                                        <div class="flex items-center gap-2 text-zinc-400">
+                                            <i class="ph ph-clock text-xl"></i>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex items-center bg-zinc-100 dark:bg-darkBg rounded-xl border border-zinc-200 dark:border-darkBorder overflow-hidden shadow-inner h-11">
+                                                <button type="button" @click="newTask.dur > 1 && newTask.dur--" class="px-3 h-full hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors border-r border-zinc-200 dark:border-darkBorder flex items-center justify-center touch-feedback">
+                                                    <i class="ph-bold ph-minus text-xs"></i>
+                                                </button>
+                                                <input type="number" v-model.number="newTask.dur" min="1" 
+                                                       class="w-12 h-full bg-transparent text-center font-semibold text-sm outline-none text-black dark:text-white">
+                                                <button type="button" @click="newTask.dur++" class="px-3 h-full hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors border-l border-zinc-200 dark:border-darkBorder flex items-center justify-center touch-feedback">
+                                                    <i class="ph-bold ph-plus text-xs"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Dropdown -->
+                                            <div class="relative">
+                                                <div v-if="isDropdownOpen" @click="isDropdownOpen = false" class="fixed inset-0 z-30"></div>
+                                                <button type="button" @click="isDropdownOpen = !isDropdownOpen" class="h-11 px-4 flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white font-medium border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-sm hover:border-black dark:hover:border-white transition-all duration-300 touch-feedback">
+                                                    <span class="text-sm whitespace-nowrap">{{ t(newTask.unit) }}</span>
+                                                    <i class="ph ph-caret-down text-[10px] transition-transform duration-300" :class="{'rotate-180': isDropdownOpen}"></i>
+                                                </button>
+                                                <transition name="fade">
+                                                    <ul v-if="isDropdownOpen" class="absolute z-50 top-full mt-2 left-0 w-40 bg-white/95 dark:bg-darkSurface/95 backdrop-blur-xl border border-zinc-200 dark:border-darkBorder rounded-xl shadow-soft py-1.5 overflow-hidden">
+                                                        <li v-for="u in availableUnits" :key="u" @click="newTask.unit = u; isDropdownOpen = false" class="px-4 py-2.5 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors text-black dark:text-white touch-feedback">
+                                                            {{ t(u) }}
+                                                        </li>
+                                                    </ul>
+                                                </transition>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Stars -->
+                                    <div class="flex items-center gap-3 sm:border-l border-zinc-200 dark:border-zinc-800 sm:pl-6 h-9 w-full sm:w-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 mt-2 sm:mt-0">
+                                        <span class="text-[10px] text-zinc-400 uppercase tracking-widest font-semibold">{{ t('priority') }}</span>
+                                        <div class="flex gap-1" @mouseleave="hoverRating = 0">
+                                            <i v-for="star in 5" :key="star"
+                                               @mouseover="hoverRating = star"
+                                               @click="setRating(star)"
+                                               :class="['text-xl cursor-pointer transition-all duration-300', 
+                                                        star <= (hoverRating || newTask.importance) ? 'ph-fill ph-star text-accentYellow drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] animate-star-pop' : 'ph ph-star text-zinc-300 dark:text-zinc-700']">
+                                            </i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black px-6 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:shadow-lg active:scale-[0.97] flex items-center justify-center gap-2 mt-2 sm:mt-0 touch-feedback">
+                                    <i class="ph-bold ph-plus-circle text-lg"></i>
+                                    {{ t('addBtn') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tasks List -->
+                    <div class="flex-grow relative min-h-[300px]">
+                        <transition name="fade">
+                            <div v-if="sortedTasks.length === 0" class="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 opacity-60 px-4 text-center">
+                                <div class="w-20 h-20 md:w-24 md:h-24 mb-4 md:mb-6 rounded-full bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center shadow-inner animate-float">
+                                    <i class="ph ph-leaf text-4xl md:text-5xl text-black dark:text-white opacity-40"></i>
+                                </div>
+                                <p class="text-sm md:text-base font-medium tracking-wide">{{ t('emptyTasks') }}</p>
+                            </div>
+                        </transition>
+
+                        <transition-group name="list" tag="ul" class="space-y-3 relative pb-20 z-10">
+                            <li v-for="(task, index) in sortedTasks" :key="task.id"
+                                class="bg-white/90 dark:bg-darkSurface/90 backdrop-blur-sm rounded-2xl border border-zinc-200/80 dark:border-darkBorder/80 shadow-sm transition-all duration-500 group"
+                                :class="task.completed ? 'opacity-60 bg-zinc-50/50 dark:bg-darkBg/50' : 'hover:border-black/30 dark:hover:border-white/30 hover:shadow-soft md:hover:-translate-y-0.5'"
+                                :style="{ animationDelay: `${index * 0.05}s` }">
+                                
+                                <div class="p-4 md:p-5 flex items-start gap-3 md:gap-4">
+                                    <input type="checkbox" class="checkbox-circle shrink-0 mt-0.5" :checked="task.completed" @change="toggleTask(task.id)">
+                                    
+                                    <div class="flex-grow min-w-0 flex flex-col gap-2.5 md:gap-3">
+                                        <div class="flex justify-between items-start gap-2">
+                                            <span class="text-base md:text-lg font-medium break-words leading-snug transition-all duration-400 text-black dark:text-white" :class="task.completed ? 'strike' : ''">
+                                                {{ task.title }}
+                                            </span>
+                                            
+                                            <button @click="deleteTask(task.id)" class="md:hidden text-zinc-300 hover:text-red-500 transition-all duration-300 shrink-0 p-1.5 bg-white dark:bg-darkSurface rounded-xl border border-zinc-100 dark:border-darkBorder touch-feedback">
+                                                <i class="ph-bold ph-trash text-lg"></i>
+                                            </button>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400">
+                                            <div class="flex items-center gap-2">
+                                                <span class="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 font-medium">
+                                                    <i class="ph-bold ph-clock"></i> {{ task.dur }} {{ t(task.unit).toLowerCase() }}
+                                                </span>
+                                                
+                                                <div class="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700" :class="task.completed ? 'opacity-50 grayscale' : ''">
+                                                    <i v-for="n in 5" :key="n"
+                                                       :class="n <= task.importance ? 'ph-fill ph-star text-accentYellow' : 'ph-fill ph-star text-zinc-200 dark:text-zinc-600'"
+                                                       class="text-[10px]"></i>
+                                                </div>
+                                            </div>
+
+                                            <button @click="task.expanded = !task.expanded" class="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-all sm:ml-auto font-medium bg-zinc-50 dark:bg-darkBg px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 touch-feedback">
+                                                <i class="transition-transform duration-300" :class="task.expanded ? 'ph-bold ph-caret-up' : 'ph-bold ph-caret-down'"></i> 
+                                                {{ t('subtasks') }} <span v-if="task.subtasks.length > 0" class="ml-1 bg-black dark:bg-white text-white dark:text-black px-1.5 py-0.5 rounded text-[8px] font-bold">{{ task.subtasks.filter(s => s.completed).length }}/{{ task.subtasks.length }}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <button @click="deleteTask(task.id)" class="hidden md:block opacity-0 group-hover:opacity-100 text-zinc-300 hover:text-black dark:hover:text-white transition-all duration-300 shrink-0 p-2.5 bg-white dark:bg-darkSurface rounded-xl border border-zinc-200 dark:border-darkBorder hover:bg-zinc-100 dark:hover:bg-zinc-800 touch-feedback">
+                                        <i class="ph-bold ph-trash text-xl"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Subtasks -->
+                                <transition name="fade">
+                                    <div v-show="task.expanded" class="border-t border-zinc-100 dark:border-darkBorder bg-zinc-50/80 dark:bg-darkBg/80 p-4 md:p-5 pl-12 md:pl-14 transition-all rounded-b-2xl">
+                                        <ul class="space-y-3 mb-4">
+                                            <li v-for="sub in task.subtasks" :key="sub.id" class="flex items-center gap-3 group/sub touch-feedback">
+                                                <input type="checkbox" class="checkbox-circle !w-4 !h-4" v-model="sub.completed" @change="saveTasks">
+                                                <span class="text-sm font-medium flex-grow transition-all duration-300 text-black dark:text-white" :class="sub.completed ? 'strike' : ''">{{ sub.title }}</span>
+                                                <button @click="deleteSubtask(task, sub.id)" class="text-zinc-300 md:opacity-0 group-hover/sub:opacity-100 hover:text-black dark:hover:text-white transition-all p-1.5 touch-feedback">
+                                                    <i class="ph-bold ph-x text-base"></i>
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-2 focus-within:border-black dark:focus-within:border-white transition-colors duration-300">
+                                            <i class="ph-bold ph-arrow-elbow-down-right text-zinc-400 focus-within:text-black dark:focus-within:text-white text-lg transition-colors"></i>
+                                            <input v-model="task.newSubtaskTitle" 
+                                                   @keyup.enter="addSubtask(task)"
+                                                   type="text" 
+                                                   :placeholder="t('addSubtask')" 
+                                                   class="flex-grow text-sm font-medium bg-transparent border-none outline-none py-1 placeholder-zinc-400 text-black dark:text-white">
+                                            <button @click="addSubtask(task)" class="md:hidden text-black dark:text-white p-1 touch-feedback">
+                                                <i class="ph-bold ph-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </transition>
+                            </li>
+                        </transition-group>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- PROGRESS TAB -->
+            <transition name="slide-fade" mode="out-in">
+                <div v-if="currentTab === 'progress'" key="progress" class="flex-col flex flex-grow gap-6 animate-scale-in">
+                    
+                    <!-- Evaluation -->
+                    <div class="bg-white/80 dark:bg-darkSurface/80 backdrop-blur-xl rounded-[1.75rem] border border-zinc-200/80 dark:border-darkBorder/80 p-6 md:p-8 shadow-soft overflow-hidden relative">
+                        <div class="relative z-10 flex flex-col md:flex-row gap-6 md:gap-8">
+                            <div class="md:w-1/3 flex flex-col justify-center border-b md:border-b-0 md:border-r border-zinc-200/80 dark:border-zinc-800 pb-6 md:pb-0 md:pr-8 text-center md:text-left">
+                                <h3 class="text-xl md:text-2xl font-semibold mb-2 text-black dark:text-white">{{ t('howWasDay') }}</h3>
+                                <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">{{ t('rateDesc') }}</p>
+                                
+                                <div class="flex justify-center md:justify-start gap-2">
+                                    <button v-for="rating in [1, 2, 3, 4, 5]" :key="rating"
+                                            @click="currentRating = rating"
+                                            :class="['w-10 h-10 md:w-12 md:h-12 rounded-xl border-2 flex items-center justify-center text-lg font-semibold transition-all duration-300 touch-feedback', 
+                                                     currentRating === rating ? 'border-accentYellow bg-accentYellow text-black scale-110 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 'border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400']">
+                                        {{ rating }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="md:w-2/3 flex flex-col">
+                                <textarea v-model="currentNote" :placeholder="t('notePlaceholder')"
+                                          class="w-full h-28 md:h-32 bg-zinc-50 dark:bg-darkBg/50 border border-zinc-200 dark:border-darkBorder rounded-xl md:rounded-2xl p-4 outline-none focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10 transition-all duration-300 text-sm resize-none mb-4 leading-relaxed text-black dark:text-white placeholder-zinc-400"></textarea>
+                                
+                                <div class="flex flex-col sm:flex-row justify-end items-center gap-3 w-full">
+                                    <transition name="fade">
+                                        <span v-if="!todayNotRated" class="w-full sm:w-auto justify-center text-xs md:text-sm font-medium text-black dark:text-white flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                                            <i class="ph-fill ph-check-circle text-lg"></i> {{ t('dayRated') }}
+                                        </span>
+                                    </transition>
+                                    <button @click="saveTodayProgress" :disabled="!currentRating"
+                                            class="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black px-8 py-3 rounded-xl text-sm font-semibold transition-all duration-300 hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:shadow-lg active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed touch-feedback">
+                                        {{ t('saveProgress') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart & Stats -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white/80 dark:bg-darkSurface/80 backdrop-blur-xl rounded-[1.75rem] border border-zinc-200/80 dark:border-darkBorder/80 p-6 shadow-soft flex flex-col min-h-[300px] md:min-h-[350px]">
+                            <h3 class="text-lg font-semibold mb-6 flex items-center gap-3 text-black dark:text-white">
+                                <div class="w-9 h-9 rounded-xl bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-md">
+                                    <i class="ph-fill ph-chart-line-up"></i>
+                                </div>
+                                {{ t('chartTitle') }}
+                            </h3>
+                            <div class="relative flex-grow w-full">
+                                <canvas id="progressChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Stats Widget -->
+                        <div class="bg-zinc-100 dark:bg-zinc-900 rounded-[1.75rem] p-6 shadow-inner border border-zinc-200/50 dark:border-darkBorder flex flex-col justify-between relative overflow-hidden group min-h-[200px]">
+                            <div class="absolute -right-8 -bottom-8 opacity-5 dark:opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+                                <i class="ph-fill ph-check-circle text-8xl text-black dark:text-white"></i>
+                            </div>
+                            <div class="relative z-10 flex flex-row lg:flex-col justify-between h-full gap-6">
+                                <div class="flex-1">
+                                    <h3 class="text-zinc-500 dark:text-zinc-400 font-medium mb-1 uppercase tracking-widest text-[10px]">{{ t('completedTotal') }}</h3>
+                                    <div class="text-4xl font-bold text-zinc-400 dark:text-zinc-600">{{ tasks.filter(t=>t.completed).length }}</div>
+                                </div>
+                                
+                                <div class="flex-1 border-l lg:border-l-0 lg:border-t border-zinc-200 dark:border-zinc-800 pl-6 lg:pl-0 lg:pt-6">
+                                    <h3 class="text-zinc-500 dark:text-zinc-400 font-medium mb-1 uppercase tracking-widest text-[10px]">{{ t('avgRating') }}</h3>
+                                    <div class="text-2xl font-semibold flex items-center gap-2 text-black dark:text-white">
+                                        {{ avgRating }} <i class="ph-fill ph-star text-accentYellow text-xl drop-shadow-sm"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Journal -->
+                    <div v-if="journalEntries.length > 0" class="bg-white/80 dark:bg-darkSurface/80 backdrop-blur-xl rounded-[1.75rem] border border-zinc-200/80 dark:border-darkBorder/80 p-6 shadow-soft">
+                        <h3 class="text-lg font-semibold mb-6 flex items-center gap-3 text-black dark:text-white">
+                            <div class="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-black dark:text-white shadow-inner">
+                                <i class="ph-fill ph-book-open-text"></i>
+                            </div>
+                            {{ t('journalTitle') }}
+                        </h3>
+                        <div class="space-y-4">
+                            <div v-for="(entry, index) in journalEntries" :key="entry.date" 
+                                 class="p-5 rounded-2xl bg-zinc-50 dark:bg-darkBg/60 border border-zinc-200 dark:border-darkBorder flex flex-col sm:flex-row gap-4 hover:border-black/30 dark:hover:border-white/30 hover:shadow-sm transition-all duration-300 touch-feedback"
+                                 :style="{ animationDelay: `${index * 0.1}s` }" style="animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;">
+                                <div class="flex flex-row sm:flex-col items-center sm:items-start justify-between sm:w-1/4 shrink-0 border-b sm:border-b-0 sm:border-r border-zinc-200 dark:border-zinc-800 pb-3 sm:pb-0 sm:pr-6">
+                                    <span class="text-[10px] text-black dark:text-white font-semibold bg-zinc-200 dark:bg-zinc-800 w-fit px-2.5 py-1 rounded-lg shadow-sm">{{ entry.displayDate }}</span>
+                                    <div class="flex items-center gap-1 mt-0 sm:mt-2">
+                                        <i v-for="n in 5" :key="n" :class="n <= entry.rating ? 'ph-fill ph-star text-accentYellow scale-110' : 'ph-fill ph-star text-zinc-300 dark:text-zinc-700'" class="text-xs"></i>
+                                    </div>
+                                </div>
+                                <p class="text-xs md:text-sm text-zinc-600 dark:text-zinc-300 flex-grow whitespace-pre-wrap leading-relaxed">{{ entry.note || '—' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </transition>
+
+        </div>
+    </transition>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue
+
+    const dict = {
+        ru: {
+            loginSubtitle: 'С возвращением',
+            registerSubtitle: 'Начни свой путь',
+            username: 'Имя пользователя',
+            password: 'Пароль',
+            loginBtn: 'Войти',
+            registerBtn: 'Создать',
+            noAccount: 'Нет аккаунта? Зарегистрироваться',
+            hasAccount: 'Уже есть аккаунт? Войти',
+            tasksTab: 'Задачи',
+            progressTab: 'Прогресс',
+            logout: 'Выйти',
+            taskPlaceholder: 'Что нужно сделать?',
+            addBtn: 'Добавить',
+            priority: 'Важность',
+            days: 'Дней', weeks: 'Недель', months: 'Месяцев', years: 'Лет',
+            subtasks: 'Подзадачи',
+            emptyTasks: 'Список пуст. Время планировать.',
+            addSubtask: 'Подзадача...',
+            howWasDay: 'Как прошел день?',
+            dayRated: 'Оценено',
+            rateDesc: 'Оцени продуктивность и запиши инсайты.',
+            notePlaceholder: 'Что сделано сегодня? (необязательно)',
+            saveProgress: 'Сохранить',
+            chartTitle: 'Аналитика',
+            journalTitle: 'Дневник',
+            noRating: 'Нет оценки',
+            completedTotal: 'Выполнено',
+            avgRating: 'Средний балл',
+        },
+        en: {
+            loginSubtitle: 'Welcome back',
+            registerSubtitle: 'Start your journey',
+            username: 'Username',
+            password: 'Password',
+            loginBtn: 'Sign In',
+            registerBtn: 'Create',
+            noAccount: 'No account? Sign up',
+            hasAccount: 'Already have an account? Sign in',
+            tasksTab: 'Tasks',
+            progressTab: 'Progress',
+            logout: 'Sign Out',
+            taskPlaceholder: 'What needs to be done?',
+            addBtn: 'Add',
+            priority: 'Priority',
+            days: 'Days', weeks: 'Weeks', months: 'Months', years: 'Years',
+            subtasks: 'Subtasks',
+            emptyTasks: 'List is empty. Time to plan.',
+            addSubtask: 'Subtask...',
+            howWasDay: 'How was your day?',
+            dayRated: 'Rated',
+            rateDesc: 'Rate productivity and log insights.',
+            notePlaceholder: 'What did you achieve? (optional)',
+            saveProgress: 'Save',
+            chartTitle: 'Analytics',
+            journalTitle: 'Journal',
+            noRating: 'No rating',
+            completedTotal: 'Completed',
+            avgRating: 'Average rating',
+        }
+    }
+
+    createApp({
+        setup() {
+            const isDark = ref(true)
+            const lang = ref('ru')
+            const isDropdownOpen = ref(false)
+
+            const toggleTheme = () => {
+                isDark.value = !isDark.value;
+                document.documentElement.classList.toggle('dark', isDark.value);
+                localStorage.setItem('puretodo_theme', isDark.value ? 'dark' : 'light');
+                // Update meta theme-color
+                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                if (metaTheme) metaTheme.setAttribute('content', isDark.value ? '#0a0a0a' : '#ffffff');
+                if(currentTab.value === 'progress') nextTick(renderChart);
+            }
+
+            const toggleLang = () => {
+                lang.value = lang.value === 'ru' ? 'en' : 'ru';
+                localStorage.setItem('puretodo_lang', lang.value);
+            }
+
+            const t = (key) => dict[lang.value][key] || key;
+
+            const isLoginMode = ref(true)
+            const authForm = ref({ username: '', password: '' })
+            const authError = ref('')
+            const currentUser = ref(null)
+            const currentTab = ref('tasks')
+
+            const tasks = ref([])
+            const availableUnits = ['days', 'weeks', 'months', 'years'];
+            const newTask = ref({ title: '', dur: 1, unit: 'days', importance: 3 })
+            const hoverRating = ref(0)
+            
+            const setRating = (star) => {
+                newTask.value.importance = star;
+            }
+
+            const progressData = ref({})
+            const currentRating = ref(0)
+            const currentNote = ref('')
+            let chartInstance = null;
+
+            onMounted(() => {
+                const savedTheme = localStorage.getItem('puretodo_theme');
+                if (savedTheme === 'light') isDark.value = false;
+                document.documentElement.classList.toggle('dark', isDark.value);
+                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                if (metaTheme) metaTheme.setAttribute('content', isDark.value ? '#0a0a0a' : '#ffffff');
+
+                const savedLang = localStorage.getItem('puretodo_lang');
+                if (savedLang) lang.value = savedLang;
+
+                const savedUser = localStorage.getItem('puretodo_user');
+                if (savedUser) {
+                    currentUser.value = JSON.parse(savedUser)
+                    loadData()
+                }
+            })
+
+            const loadData = () => {
+                if (!currentUser.value) return
+                const savedTasks = localStorage.getItem(`puretodo_tasks_${currentUser.value.username}`)
+                if (savedTasks) tasks.value = JSON.parse(savedTasks)
+                
+                const savedProgress = localStorage.getItem(`puretodo_progress_${currentUser.value.username}`)
+                if (savedProgress) {
+                    const pd = JSON.parse(savedProgress)
+                    Object.keys(pd).forEach(k => {
+                        if (typeof pd[k] === 'number') pd[k] = { rating: pd[k], note: '' }
+                    })
+                    progressData.value = pd;
+                }
+                updateTodayState();
+            }
+
+            const saveTasks = () => {
+                if (!currentUser.value) return
+                localStorage.setItem(`puretodo_tasks_${currentUser.value.username}`, JSON.stringify(tasks.value))
+            }
+            
+            const saveProgress = () => {
+                if (!currentUser.value) return
+                localStorage.setItem(`puretodo_progress_${currentUser.value.username}`, JSON.stringify(progressData.value))
+            }
+
+            watch(tasks, saveTasks, { deep: true })
+            
+            watch(currentTab, async (newTab) => {
+                if (newTab === 'progress') {
+                    updateTodayState();
+                    await nextTick();
+                    renderChart();
+                }
+            })
+
+            const toggleAuthMode = () => { isLoginMode.value = !isLoginMode.value; authError.value = ''; }
+            const handleAuth = () => {
+                authError.value = '';
+                const { username, password } = authForm.value;
+                if (!username.trim() || !password.trim()) return;
+
+                const users = JSON.parse(localStorage.getItem('puretodo_users') || '{}')
+                if (isLoginMode.value) {
+                    if (users[username] && users[username].password === password) loginUser(username);
+                    else authError.value = lang.value === 'ru' ? 'Неверные данные' : 'Invalid';
+                } else {
+                    if (users[username]) authError.value = lang.value === 'ru' ? 'Пользователь существует' : 'Exists';
+                    else {
+                        users[username] = { password }
+                        localStorage.setItem('puretodo_users', JSON.stringify(users))
+                        loginUser(username)
+                    }
+                }
+            }
+            const loginUser = (username) => {
+                currentUser.value = { username }
+                localStorage.setItem('puretodo_user', JSON.stringify(currentUser.value))
+                authForm.value = { username: '', password: '' }
+                loadData()
+            }
+            const logout = () => {
+                currentUser.value = null; tasks.value = []; progressData.value = {};
+                localStorage.removeItem('puretodo_user')
+            }
+
+            const addTask = () => {
+                if (!newTask.value.title.trim()) return
+                if (newTask.value.dur < 1 || !newTask.value.dur) newTask.value.dur = 1;
+                
+                tasks.value.unshift({
+                    id: Date.now(),
+                    title: newTask.value.title.trim(),
+                    dur: newTask.value.dur,
+                    unit: newTask.value.unit,
+                    importance: newTask.value.importance,
+                    completed: false, expanded: false, subtasks: [], newSubtaskTitle: '',
+                    createdAt: new Date().toISOString()
+                })
+                newTask.value.title = ''; newTask.value.dur = 1; newTask.value.importance = 3;
+                document.activeElement.blur();
+            }
+            const toggleTask = (id) => {
+                const task = tasks.value.find(t => t.id === id)
+                if (task) {
+                    task.completed = !task.completed
+                    task.subtasks.forEach(sub => sub.completed = task.completed)
+                }
+            }
+            const deleteTask = (id) => tasks.value = tasks.value.filter(t => t.id !== id)
+            const addSubtask = (task) => {
+                if (!task.newSubtaskTitle || !task.newSubtaskTitle.trim()) return;
+                task.subtasks.push({ id: Date.now() + Math.random(), title: task.newSubtaskTitle.trim(), completed: false });
+                task.newSubtaskTitle = '';
+                if (task.completed) task.completed = false;
+            }
+            const deleteSubtask = (task, subId) => task.subtasks = task.subtasks.filter(sub => sub.id !== subId)
+
+            const sortedTasks = computed(() => {
+                let res = [...tasks.value]
+                res.sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1
+                    if (b.importance !== a.importance) return b.importance - a.importance
+                    return b.id - a.id
+                })
+                return res
+            })
+
+            const getTodayString = () => {
+                const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            }
+
+            const todayNotRated = computed(() => !progressData.value[getTodayString()])
+
+            const updateTodayState = () => {
+                const td = progressData.value[getTodayString()];
+                if (td) {
+                    currentRating.value = td.rating;
+                    currentNote.value = td.note;
+                } else {
+                    currentRating.value = 0;
+                    currentNote.value = '';
+                }
+            }
+
+            const saveTodayProgress = () => {
+                if (currentRating.value === 0) return;
+                progressData.value[getTodayString()] = {
+                    rating: currentRating.value,
+                    note: currentNote.value.trim()
+                };
+                saveProgress();
+                renderChart();
+            }
+
+            const journalEntries = computed(() => {
+                const entries = [];
+                const keys = Object.keys(progressData.value).sort().reverse();
+                keys.forEach(k => {
+                    if(progressData.value[k] && progressData.value[k].note) {
+                        const parts = k.split('-');
+                        entries.push({
+                            date: k,
+                            displayDate: `${parts[2]}.${parts[1]}.${parts[0]}`,
+                            rating: progressData.value[k].rating,
+                            note: progressData.value[k].note
+                        });
+                    }
+                });
+                return entries;
+            })
+
+            const avgRating = computed(() => {
+                const keys = Object.keys(progressData.value);
+                if (keys.length === 0) return 0;
+                let sum = 0;
+                keys.forEach(k => sum += progressData.value[k].rating);
+                return (sum / keys.length).toFixed(1);
+            })
+
+            const renderChart = () => {
+                const ctx = document.getElementById('progressChart');
+                if (!ctx) return;
+
+                const labels = []; const data = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(); d.setDate(d.getDate() - i);
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    labels.push(`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`);
+                    const pd = progressData.value[dateStr];
+                    data.push(pd ? pd.rating : 0);
+                }
+
+                if (chartInstance) chartInstance.destroy();
+
+                const textColor = isDark.value ? '#a1a1aa' : '#71717a'; 
+                const gridColor = isDark.value ? '#27272a' : '#e4e4e7'; 
+                Chart.defaults.color = textColor;
+                Chart.defaults.font.family = 'Inter';
+                Chart.defaults.animation.duration = 800;
+                Chart.defaults.animation.easing = 'easeOutQuart';
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: t('chartTitle'),
+                            data: data,
+                            borderColor: isDark.value ? '#ffffff' : '#000000',
+                            backgroundColor: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                            borderWidth: 2,
+                            pointBackgroundColor: isDark.value ? '#000000' : '#ffffff',
+                            pointBorderColor: isDark.value ? '#ffffff' : '#000000',
+                            pointBorderWidth: 2,
+                            pointRadius: 4, pointHoverRadius: 6,
+                            fill: true, tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: isDark.value ? '#ffffff' : '#18181b',
+                                titleColor: isDark.value ? '#000000' : '#ffffff',
+                                bodyColor: isDark.value ? '#52525b' : '#d4d4d8',
+                                borderColor: isDark.value ? '#e4e4e7' : '#27272a',
+                                borderWidth: 1, padding: 12, displayColors: false,
+                                callbacks: {
+                                    label: function(c) { return c.raw === 0 ? t('noRating') : `${c.raw} / 5`; }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { min: 0, max: 5, ticks: { stepSize: 1 }, grid: { color: gridColor } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            return {
+                isDark, lang, toggleTheme, toggleLang, t, availableUnits, isDropdownOpen,
+                isLoginMode, authForm, authError, currentUser, currentTab,
+                tasks, newTask, hoverRating, setRating,
+                toggleAuthMode, handleAuth, logout,
+                addTask, toggleTask, deleteTask, addSubtask, deleteSubtask,
+                sortedTasks, saveTasks,
+                todayNotRated, currentRating, currentNote, saveTodayProgress, journalEntries, avgRating
+            }
+        }
+    }).mount('#app')
+</script>
+</body>
+</html>
