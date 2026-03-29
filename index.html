@@ -339,13 +339,13 @@
                                             <!-- Dropdown -->
                                             <div class="relative">
                                                 <div v-if="isDropdownOpen" @click="isDropdownOpen = false" class="fixed inset-0 z-30"></div>
-                                                <button type="button" @click="isDropdownOpen = !isDropdownOpen" class="h-11 px-4 flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white font-medium border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-sm hover:border-black dark:hover:border-white transition-all duration-300 touch-feedback">
+                                                <button type="button" @click="isDropdownOpen = !isDropdownOpen" class="h-11 px-4 flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white font-medium border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-sm hover:border-black dark:hover:border-white transition-all duration-300 touch-feedback relative z-40">
                                                     <span class="text-sm whitespace-nowrap">{{ t(newTask.unit) }}</span>
                                                     <i class="ph ph-caret-down text-[10px] transition-transform duration-300" :class="{'rotate-180': isDropdownOpen}"></i>
                                                 </button>
                                                 <transition name="fade">
-                                                    <ul v-if="isDropdownOpen" class="absolute z-50 top-full mt-2 left-0 w-40 bg-white/95 dark:bg-darkSurface/95 backdrop-blur-xl border border-zinc-200 dark:border-darkBorder rounded-xl shadow-soft py-1.5 overflow-hidden">
-                                                        <li v-for="u in availableUnits" :key="u" @click="newTask.unit = u; isDropdownOpen = false" class="px-4 py-2.5 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors text-black dark:text-white touch-feedback">
+                                                    <ul v-if="isDropdownOpen" class="absolute z-50 top-full mt-2 left-0 w-40 bg-white dark:bg-darkSurface border border-zinc-200 dark:border-darkBorder rounded-xl shadow-soft py-1.5 overflow-hidden">
+                                                        <li v-for="u in availableUnits" :key="u" @click.stop="newTask.unit = u; isDropdownOpen = false" class="px-4 py-2.5 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors text-black dark:text-white touch-feedback">
                                                             {{ t(u) }}
                                                         </li>
                                                     </ul>
