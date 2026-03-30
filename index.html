@@ -293,6 +293,10 @@
                                 :class="['flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 touch-feedback', currentTab === 'tasks' ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
                             {{ t('tasksTab') }}
                         </button>
+                        <button @click="currentTab = 'schedule'" 
+                                :class="['flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 touch-feedback', currentTab === 'schedule' ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
+                            {{ t('scheduleTab') }}
+                        </button>
                         <button @click="currentTab = 'progress'" 
                                 :class="['flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 touch-feedback flex items-center justify-center gap-2', currentTab === 'progress' ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
                             {{ t('progressTab') }} 
@@ -420,7 +424,11 @@
                                                 </div>
                                             </div>
 
-                                            <button @click="task.expanded = !task.expanded" class="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-all sm:ml-auto font-medium bg-zinc-50 dark:bg-darkBg px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 touch-feedback">
+                                            <button @click="toggleSchedule(task)" class="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-all sm:ml-auto font-medium bg-zinc-50 dark:bg-darkBg px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 touch-feedback" :class="task.scheduled ? 'bg-black text-white dark:bg-white dark:text-black border-none hover:bg-zinc-800 dark:hover:bg-zinc-200' : ''">
+                                                <i :class="task.scheduled ? 'ph-fill ph-calendar-check' : 'ph-bold ph-calendar-plus'"></i>
+                                            </button>
+
+                                            <button @click="task.expanded = !task.expanded" class="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-all font-medium bg-zinc-50 dark:bg-darkBg px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 touch-feedback">
                                                 <i class="transition-transform duration-300" :class="task.expanded ? 'ph-bold ph-caret-up' : 'ph-bold ph-caret-down'"></i> 
                                                 {{ t('subtasks') }} <span v-if="task.subtasks.length > 0" class="ml-1 bg-black dark:bg-white text-white dark:text-black px-1.5 py-0.5 rounded text-[8px] font-bold">{{ task.subtasks.filter(s => s.completed).length }}/{{ task.subtasks.length }}</span>
                                             </button>
@@ -458,6 +466,56 @@
                                         </div>
                                     </div>
                                 </transition>
+                            </li>
+                        </transition-group>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- SCHEDULE TAB -->
+            <transition name="slide-fade" mode="out-in">
+                <div v-if="currentTab === 'schedule'" key="schedule" class="flex-col flex flex-grow animate-scale-in">
+                    <div class="bg-white/80 dark:bg-darkSurface/80 backdrop-blur-xl rounded-[1.75rem] border border-zinc-200/80 dark:border-darkBorder/80 p-6 shadow-soft">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl md:text-2xl font-semibold text-black dark:text-white flex items-center gap-3">
+                                <i class="ph-fill ph-calendar text-2xl"></i> {{ t('scheduleTitle') }}
+                            </h3>
+                            <div class="flex gap-2 bg-zinc-100 dark:bg-darkBg rounded-xl p-1 border border-zinc-200 dark:border-darkBorder overflow-x-auto hide-scrollbar max-w-[60vw]">
+                                <button v-for="(day, index) in weekDays" :key="index" @click="currentDay = index"
+                                        :class="['px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap touch-feedback', currentDay === index ? 'bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white' : 'text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white']">
+                                    {{ day }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Add Schedule Item Form -->
+                        <form @submit.prevent="addScheduleItem" class="flex items-center gap-3 mb-6 bg-zinc-50 dark:bg-darkBg/50 p-2 rounded-2xl border border-zinc-200 dark:border-darkBorder focus-within:border-black dark:focus-within:border-white transition-colors">
+                            <input v-model="newScheduleItem.time" type="time" required
+                                   class="bg-transparent text-sm font-semibold outline-none px-3 py-2 border-r border-zinc-200 dark:border-darkBorder text-black dark:text-white">
+                            <input v-model="newScheduleItem.text" type="text" :placeholder="t('schedulePlaceholder')" required
+                                   class="flex-grow bg-transparent text-sm outline-none px-3 py-2 text-black dark:text-white placeholder-zinc-400">
+                            <button type="submit" class="bg-black dark:bg-white text-white dark:text-black w-10 h-10 rounded-xl flex items-center justify-center shrink-0 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors touch-feedback">
+                                <i class="ph-bold ph-plus"></i>
+                            </button>
+                        </form>
+                        
+                        <div v-if="!scheduleData[currentDay] || scheduleData[currentDay].length === 0" class="flex flex-col items-center justify-center py-10 opacity-60">
+                            <div class="w-20 h-20 mb-4 rounded-full bg-zinc-100 dark:bg-darkBg flex items-center justify-center shadow-inner">
+                                <i class="ph ph-calendar-blank text-4xl text-black dark:text-white opacity-40"></i>
+                            </div>
+                            <p class="font-medium">{{ t('emptySchedule') }}</p>
+                        </div>
+                        
+                        <transition-group name="list" tag="ul" class="space-y-3 relative">
+                            <li v-for="item in sortedScheduleItems" :key="item.id" 
+                                class="flex items-center gap-4 bg-white dark:bg-darkSurface p-4 rounded-2xl border border-zinc-200 dark:border-darkBorder hover:border-black/30 dark:hover:border-white/30 transition-colors group">
+                                <div class="w-14 shrink-0 text-center font-bold text-sm bg-zinc-100 dark:bg-darkBg py-1.5 rounded-lg text-black dark:text-white shadow-inner">
+                                    {{ item.time }}
+                                </div>
+                                <span class="font-medium flex-grow text-black dark:text-white">{{ item.text }}</span>
+                                <button @click="deleteScheduleItem(item.id)" class="text-zinc-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-all touch-feedback p-2">
+                                    <i class="ph-bold ph-trash text-lg"></i>
+                                </button>
                             </li>
                         </transition-group>
                     </div>
@@ -584,6 +642,7 @@
             noAccount: 'Нет аккаунта? Зарегистрироваться',
             hasAccount: 'Уже есть аккаунт? Войти',
             tasksTab: 'Задачи',
+            scheduleTab: 'Расписание',
             progressTab: 'Прогресс',
             logout: 'Выйти',
             taskPlaceholder: 'Что нужно сделать?',
@@ -603,6 +662,28 @@
             noRating: 'Нет оценки',
             completedTotal: 'Выполнено',
             avgRating: 'Средний балл',
+            editTask: 'Редактировать задачу',
+            saveBtn: 'Сохранить',
+            cancelBtn: 'Отмена',
+            scheduleTitle: 'Расписание',
+            emptySchedule: 'Нет планов на этот день.',
+            schedulePlaceholder: 'Что планируем?',
+            tagsTitle: 'Теги',
+            addTag: 'Добавить тег',
+            dueTitle: 'Дедлайн',
+            energyLevel: 'Уровень энергии',
+            energyLow: 'Низкий',
+            energyNormal: 'Нормальный',
+            energyHigh: 'Высокий',
+            habitsTitle: 'Привычки',
+            addHabit: 'Новая привычка',
+            habitsEmpty: 'Нет привычек.',
+            exportImportTitle: 'Экспорт / Импорт',
+            exportBtn: 'Экспорт в JSON',
+            importBtn: 'Импорт из JSON',
+            statsTitle: 'Статистика',
+            weekStats: 'За неделю',
+            monthStats: 'За месяц',
         },
         en: {
             loginSubtitle: 'Welcome back',
@@ -614,6 +695,7 @@
             noAccount: 'No account? Sign up',
             hasAccount: 'Already have an account? Sign in',
             tasksTab: 'Tasks',
+            scheduleTab: 'Schedule',
             progressTab: 'Progress',
             logout: 'Sign Out',
             taskPlaceholder: 'What needs to be done?',
@@ -633,6 +715,28 @@
             noRating: 'No rating',
             completedTotal: 'Completed',
             avgRating: 'Average rating',
+            editTask: 'Edit Task',
+            saveBtn: 'Save',
+            cancelBtn: 'Cancel',
+            scheduleTitle: 'Schedule',
+            emptySchedule: 'No plans for this day.',
+            schedulePlaceholder: 'What is planned?',
+            tagsTitle: 'Tags',
+            addTag: 'Add Tag',
+            dueTitle: 'Due Date',
+            energyLevel: 'Energy Level',
+            energyLow: 'Low',
+            energyNormal: 'Normal',
+            energyHigh: 'High',
+            habitsTitle: 'Habits',
+            addHabit: 'New Habit',
+            habitsEmpty: 'No habits.',
+            exportImportTitle: 'Export / Import',
+            exportBtn: 'Export JSON',
+            importBtn: 'Import JSON',
+            statsTitle: 'Stats',
+            weekStats: 'This Week',
+            monthStats: 'This Month',
         }
     }
 
@@ -677,6 +781,15 @@
             const progressData = ref({})
             const currentRating = ref(0)
             const currentNote = ref('')
+            
+            const scheduleData = ref([[], [], [], [], [], [], []]);
+            const currentDay = ref(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+            const newScheduleItem = ref({ time: '09:00', text: '' });
+
+            const weekDaysRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            const weekDaysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const weekDays = computed(() => lang.value === 'ru' ? weekDaysRu : weekDaysEn);
+
             let chartInstance = null;
 
             onMounted(() => {
@@ -709,6 +822,10 @@
                     })
                     progressData.value = pd;
                 }
+                
+                const savedSchedule = localStorage.getItem(`puretodo_schedule_${currentUser.value.username}`)
+                if (savedSchedule) scheduleData.value = JSON.parse(savedSchedule)
+                
                 updateTodayState();
             }
 
@@ -717,12 +834,18 @@
                 localStorage.setItem(`puretodo_tasks_${currentUser.value.username}`, JSON.stringify(tasks.value))
             }
             
+            const saveSchedule = () => {
+                if (!currentUser.value) return
+                localStorage.setItem(`puretodo_schedule_${currentUser.value.username}`, JSON.stringify(scheduleData.value))
+            }
+            
             const saveProgress = () => {
                 if (!currentUser.value) return
                 localStorage.setItem(`puretodo_progress_${currentUser.value.username}`, JSON.stringify(progressData.value))
             }
 
             watch(tasks, saveTasks, { deep: true })
+            watch(scheduleData, saveSchedule, { deep: true })
             
             watch(currentTab, async (newTab) => {
                 if (newTab === 'progress') {
@@ -758,7 +881,7 @@
                 loadData()
             }
             const logout = () => {
-                currentUser.value = null; tasks.value = []; progressData.value = {};
+                currentUser.value = null; tasks.value = []; progressData.value = {}; scheduleData.value = [[], [], [], [], [], [], []];
                 localStorage.removeItem('puretodo_user')
             }
 
@@ -918,6 +1041,32 @@
                 });
             }
 
+            const sortedScheduleItems = computed(() => {
+                if(!scheduleData.value[currentDay.value]) return [];
+                return [...scheduleData.value[currentDay.value]].sort((a, b) => a.time.localeCompare(b.time));
+            });
+
+            const addScheduleItem = () => {
+                if (!newScheduleItem.value.text.trim() || !newScheduleItem.value.time) return;
+                
+                if (!scheduleData.value[currentDay.value]) {
+                    scheduleData.value[currentDay.value] = [];
+                }
+                
+                scheduleData.value[currentDay.value].push({
+                    id: Date.now(),
+                    time: newScheduleItem.value.time,
+                    text: newScheduleItem.value.text.trim()
+                });
+                
+                newScheduleItem.value.text = '';
+                // Time stays the same to make adding multiple items easier
+            }
+
+            const deleteScheduleItem = (id) => {
+                scheduleData.value[currentDay.value] = scheduleData.value[currentDay.value].filter(item => item.id !== id);
+            }
+
             return {
                 isDark, lang, toggleTheme, toggleLang, t, availableUnits, isDropdownOpen,
                 isLoginMode, authForm, authError, currentUser, currentTab,
@@ -925,6 +1074,7 @@
                 toggleAuthMode, handleAuth, logout,
                 addTask, toggleTask, deleteTask, addSubtask, deleteSubtask,
                 sortedTasks, saveTasks,
+                scheduleData, currentDay, weekDays, newScheduleItem, sortedScheduleItems, addScheduleItem, deleteScheduleItem, saveSchedule,
                 todayNotRated, currentRating, currentNote, saveTodayProgress, journalEntries, avgRating
             }
         }
